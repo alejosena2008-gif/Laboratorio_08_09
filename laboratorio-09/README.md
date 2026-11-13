@@ -1,28 +1,19 @@
 # ClassroomHub — Laboratorio 9: Formularios y CRUD con Django (Vistas, ModelForm y Permisos)
 
-**ClassroomHub** integra en este laboratorio un flujo completo de **CRUD (creación, consulta, actualización y eliminación) de recursos** desde la propia aplicación web, utilizando `ResourceForm` (`ModelForm`), vistas genéricas basadas en clases (`DetailView`, `CreateView`, `UpdateView`, `DeleteView`), `LoginRequiredMixin` y `PermissionRequiredMixin` para proteger cada operación según su permiso específico sobre MySQL/MariaDB.
+**ClassroomHub** integra en este laboratorio un flujo completo y robusto de **CRUD (creación, consulta de detalle, actualización y eliminación) de recursos** desde la interfaz web, utilizando `ResourceForm` (`ModelForm`), vistas genéricas basadas en clases (`DetailView`, `CreateView`, `UpdateView`, `DeleteView`), `LoginRequiredMixin` y `PermissionRequiredMixin` para proteger cada operación según su permiso específico.
 
-## Requisitos y versiones
+## Requisitos y compatibilidad
 
-- **Python:** 3.12+ (probado con Python 3.14)
-- **Django:** 6.1.3
-- **Motor SQL:** MariaDB 10.11+ (13.0.2-MariaDB) o MySQL 8.4+
-- **Paquetes:** `mysqlclient>=2.2.1,<3`, `python-dotenv>=1,<2`
+- **Python:** 3.10+ (probado con Python 3.14)
+- **Django:** 5.1+ / 6.1+
+- **Motor de Base de Datos:**
+  - **SQLite:** Listo para usar de inmediato (`db.sqlite3`), sin configuración adicional.
+  - **MariaDB / MySQL:** Compatible mediante variables en `.env` y soporte `pymysql` / `mysqlclient`.
+- **Dependencias:** `asgiref`, `Django`, `pymysql`, `python-dotenv`, `sqlparse`
 
-## Rutas de la aplicación y permisos
+## Matriz de permisos y rutas
 
-```text
-GET  /resources/
-GET  /resources/<pk>/
-GET  /resources/new/
-POST /resources/new/
-GET  /resources/<pk>/edit/
-POST /resources/<pk>/edit/
-GET  /resources/<pk>/delete/
-POST /resources/<pk>/delete/
-```
-
-| Operación / Ruta | Anónimo | Cuenta común | `Catalog reviewers` | `Catalog editors` |
+| Operación / Ruta | Anónimo | Cuenta común (`reader_demo`) | `Catalog reviewers` (`reviewer_demo`) | `Catalog editors` (`editor_demo`) |
 |---|---|---|---|---|
 | `GET /resources/` y `GET /resources/<pk>/` | Sí | Sí | Sí | Sí |
 | `GET /dashboard/` | Redirige a login | Sí | Sí | Sí |
@@ -31,42 +22,35 @@ POST /resources/<pk>/delete/
 | `GET/POST /resources/<pk>/edit/` (`pages.change_resource`) | Redirige a login | `403` | `403` | Sí |
 | `GET/POST /resources/<pk>/delete/` (`pages.delete_resource`) | Redirige a login | `403` | `403` | Sí |
 
-## Configuración de categorías y del grupo `Catalog editors`
+## Puesta en marcha rápida
 
-- Las **categorías (`Category`)** se administran desde Django Admin (`/admin/`).
-- El formulario de registro público (`/accounts/signup/`) **nunca asigna privilegios ni grupos**.
-- Para crear el grupo `Catalog editors` con los cuatro permisos sobre `Resource` (`view_resource`, `add_resource`, `change_resource`, `delete_resource`) desde `python manage.py shell` o desde Django Admin:
+1. **Instalar dependencias:**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-```python
-from django.contrib.auth.models import Group, Permission
-from django.contrib.contenttypes.models import ContentType
-from pages.models import Resource
+2. **Aplicar migraciones:**
+   ```bash
+   python manage.py migrate
+   ```
 
-content_type = ContentType.objects.get_for_model(Resource)
-required_codes = [
-    "view_resource",
-    "add_resource",
-    "change_resource",
-    "delete_resource",
-]
-permissions = list(
-    Permission.objects.filter(
-        content_type=content_type,
-        codename__in=required_codes,
-    )
-)
-editors, _ = Group.objects.get_or_create(name="Catalog editors")
-editors.permissions.add(*permissions)
-```
+3. **Cargar datos de demostración y roles automáticamente:**
+   ```bash
+   python manage.py setup_demo_data
+   ```
+   *Crea automáticamente los grupos `Catalog reviewers` y `Catalog editors`, categorías y los siguientes usuarios de prueba:*
+   - **Administrador:** `admin` / `AdminPassword123!` (Superusuario)
+   - **Editor de catálogo:** `editor_demo` / `EditorPassword123!` (Miembro de `Catalog editors` — permisos CRUD completos)
+   - **Revisor de catálogo:** `reviewer_demo` / `ReviewerPassword123!` (Miembro de `Catalog reviewers` — permiso de vista)
+   - **Usuario estándar:** `reader_demo` / `ReaderPassword123!` (Sin permisos de edición)
 
-## Ejecución de pruebas automatizadas
+4. **Ejecutar servidor de desarrollo:**
+   ```bash
+   python manage.py runserver
+   ```
 
-Las pruebas se ejecutan de forma aislada sobre la base descartable `test_classroom_hub`:
-
-```bash
-python manage.py check
-python manage.py makemigrations --check --dry-run
-python manage.py test pages
-```
-
-Resultado esperado: **55 pruebas exitosas (`OK`)** (10 del Laboratorio 7 + 18 del Laboratorio 8 + 27 pruebas de CRUD, validaciones de `ResourceForm`, CSRF y permisos del Laboratorio 9).
+5. **Ejecutar pruebas automatizadas:**
+   ```bash
+   python manage.py test pages
+   ```
+   *Resultado esperado:* **Ran 58 tests — OK**.
